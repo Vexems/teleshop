@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TeleShop Builder — Mini App</title>
+    <!-- Официальный скрипт Telegram WebApp -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Tailwind CSS для современного дизайна -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: var(--tg-theme-bg-color, #f3f4f6);
+            color: var(--tg-theme-text-color, #111827);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+        .tg-card {
+            background-color: var(--tg-theme-secondary-bg-color, #ffffff);
+        }
+        .tg-btn {
+            background-color: var(--tg-theme-button-color, #2563eb);
+            color: var(--tg-theme-button-text-color, #ffffff);
+        }
+    </style>
+</head>
+<body class="pb-24 select-none">
+
+    <!-- Верхняя панель: Название магазина и переключатель Конструктора -->
+    <header class="sticky top-0 z-10 tg-card shadow-sm px-4 py-3 flex justify-between items-center">
+        <div>
+            <h1 id="storeTitle" class="text-lg font-bold">SneakerDrop Store</h1>
+            <p class="text-xs opacity-60">Работает на TeleShop Builder</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="switchTab('shop')" id="tabShopBtn" class="px-3 py-1.5 rounded-lg text-xs font-semibold tg-btn">
+                🛍 Витрина
+            </button>
+            <button onclick="switchTab('builder')" id="tabBuilderBtn" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-200 text-gray-800">
+                ⚙️ Конструктор
+            </button>
+        </div>
+    </header>
+
+    <!-- ВКЛАДКА 1: ВИТРИНА ПОКУПАТЕЛЯ -->
+    <main id="shopView" class="p-4 space-y-4">
+        <!-- Поиск и категории -->
+        <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            <button onclick="filterCategory('all')" class="cat-btn px-3 py-1 rounded-full text-xs font-medium tg-btn shrink-0">Все товары</button>
+            <button onclick="filterCategory('Обувь')" class="cat-btn px-3 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-800 shrink-0">Обувь</button>
+            <button onclick="filterCategory('Одежда')" class="cat-btn px-3 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-800 shrink-0">Одежда</button>
+            <button onclick="filterCategory('Аксессуары')" class="cat-btn px-3 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-800 shrink-0">Аксессуары</button>
+        </div>
+
+        <!-- Сетка товаров -->
+        <div id="productsGrid" class="grid grid-cols-2 gap-3"></div>
+
+        <!-- Блок оформления доставки (появляется при наличии товаров в корзине) -->
+        <div id="checkoutBlock" class="hidden tg-card p-4 rounded-xl shadow-sm space-y-3 mt-4 border border-blue-500/20">
+            <h3 class="font-bold text-sm">📦 Данные для доставки</h3>
+            <input id="clientPhone" type="tel" placeholder="Ваш телефон (+7...)" class="w-full p-2.5 rounded-lg border text-sm text-black">
+            <select id="deliveryMethod" class="w-full p-2.5 rounded-lg border text-sm text-black bg-white">
+                <option value="СДЭК (до пункта выдачи)">СДЭК (до пункта выдачи) — 350 ₽</option>
+                <option value="Курьер по городу">Курьер по городу — 500 ₽</option>
+                <option value="Самовывоз из шоурума">Самовывоз из шоурума — 0 ₽</option>
+            </select>
+            <input id="clientAddress" type="text" placeholder="Город и адрес ПВЗ / улицы" class="w-full p-2.5 rounded-lg border text-sm text-black">
+        </div>
+    </main>
+
+    <!-- ВКЛАДКА 2: КОНСТРУКТОР МАГАЗИНА (ДЛЯ СЕЛЛЕРА) -->
+    <section id="builderView" class="hidden p-4 space-y-4">
+        <div class="tg-card p-4 rounded-xl shadow-sm space-y-3">
+            <h2 class="font-bold text-base">🎨 Настройки вашего магазина</h2>
+            <label class="block text-xs opacity-75">Название магазина в шапке:</label>
+            <div class="flex gap-2">
+                <input id="inputStoreName" type="text" value="SneakerDrop Store" class="flex-1 p-2 rounded-lg border text-sm text-black">
+                <button onclick="updateStoreName()" class="px-4 py-2 rounded-lg text-xs font-bold tg-btn">Сохранить</button>
+            </div>
+        </div>
+
+        <div class="tg-card p-4 rounded-xl shadow-sm space-y-3">
+            <h2 class="font-bold text-base">➕ Добавить товар в каталог</h2>
+            <input id="newProdName" type="text" placeholder="Название (напр. Худи Oversize)" class="w-full p-2 rounded-lg border text-sm text-black">
+            <div class="flex gap-2">
+                <input id="newProdPrice" type="number" placeholder="Цена (₽)" class="w-1/2 p-2 rounded-lg border text-sm text-black">
+                <select id="newProdCat" class="w-1/2 p-2 rounded-lg border text-sm text-black bg-white">
+                    <option value="Одежда">Одежда</option>
+                    <option value="Обувь">Обувь</option>
+                    <option value="Аксессуары">Аксессуары</option>
+                </select>
+            </div>
+            <input id="newProdImg" type="text" placeholder="Эмодзи или URL фото (напр. 🧥)" class="w-full p-2 rounded-lg border text-sm text-black">
+            <button onclick="addNewProduct()" class="w-full py-2.5 rounded-lg text-sm font-bold tg-btn">
+                Опубликовать на витрине
+            </button>
+        </div>
+
+        <div class="tg-card p-4 rounded-xl shadow-sm space-y-2">
+            <h2 class="font-bold text-base">📊 Статистика платформы (Демо)</h2>
+            <p class="text-xs opacity-80">Тариф: <b>Бизнес (1 990 ₽/мес)</b></p>
+            <p class="text-xs opacity-80">Интеграции: <b>ЮKassa (Активно), СДЭК API (Активно)</b></p>
+            <button onclick="resetDemoData()" class="text-xs text-red-500 underline pt-2">Сбросить витрину к исходным товарам</button>
+        </div>
+    </section>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Раскрываем WebApp на весь экран
+
+        // Стартовый набор товаров по умолчанию
+        const defaultProducts = [
+            { id: 1, name: "Кроссовки Nike Air Force 1", price: 8990, category: "Обувь", icon: "👟" },
+            { id: 2, name: "Худи Heavy Cotton Black", price: 4500, category: "Одежда", icon: "🧥" },
+            { id: 3, name: "Футболка Базовая White", price: 1990, category: "Одежда", icon: "👕" },
+            { id: 4, name: "Кепка NY Streetwear", price: 1500, category: "Аксессуары", icon: "🧢" }
+        ];
+
+        let products = JSON.parse(localStorage.getItem('teleshop_products')) || defaultProducts;
+        let cart = {}; // { productId: quantity }
+        let currentCategory = 'all';
+
+        // Инициализация названия магазина
+        const savedTitle = localStorage.getItem('teleshop_title');
+        if (savedTitle) {
+            document.getElementById('storeTitle').innerText = savedTitle;
+            document.getElementById('inputStoreName').value = savedTitle;
+        }
+
+        function renderProducts() {
+            const grid = document.getElementById('productsGrid');
+            grid.innerHTML = '';
+
+            const filtered = currentCategory === 'all' 
+                ? products 
+                : products.filter(p => p.category === currentCategory);
+
+            filtered.forEach(p => {
+                const qty = cart[p.id] || 0;
+                const card = document.createElement('div');
+                card.className = 'tg-card p-3 rounded-xl shadow-sm flex flex-col justify-between';
+                card.innerHTML = `
+                    <div>
+                        <div class="h-28 bg-gray-100 rounded-lg flex items-center justify-center text-5xl mb-2">
+                            ${p.icon || '📦'}
+                        </div>
+                        <span class="text-[10px] uppercase tracking-wider opacity-50">${p.category}</span>
+                        <h3 class="font-semibold text-sm leading-tight mt-0.5">${p.name}</h3>
+                    </div>
+                    <div class="mt-3">
+                        <p class="font-bold text-base mb-2">${p.price.toLocaleString()} ₽</p>
+                        ${qty === 0 ? `
+                            <button onclick="changeQty(${p.id}, 1)" class="w-full py-1.5 rounded-lg text-xs font-semibold tg-btn">
+                                В корзину
+                            </button>
+                        ` : `
+                            <div class="flex items-center justify-between bg-gray-200 text-black rounded-lg px-2 py-1">
+                                <button onclick="changeQty(${p.id}, -1)" class="px-2 font-bold text-base">−</button>
+                                <span class="text-xs font-bold">${qty} шт.</span>
+                                <button onclick="changeQty(${p.id}, 1)" class="px-2 font-bold text-base">+</button>
+                            </div>
+                        `}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            updateMainButton();
+        }
+
+        function changeQty(id, delta) {
+            cart[id] = (cart[id] || 0) + delta;
+            if (cart[id] <= 0) delete cart[id];
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            renderProducts();
+        }
+
+        function filterCategory(cat) {
+            currentCategory = cat;
+            renderProducts();
+        }
+
+        function updateMainButton() {
+            let total = 0;
+            let count = 0;
+            for (const [id, qty] of Object.entries(cart)) {
+                const prod = products.find(p => p.id == id);
+                if (prod) {
+                    total += prod.price * qty;
+                    count += qty;
+                }
+            }
+
+            const checkoutBlock = document.getElementById('checkoutBlock');
+            if (count > 0) {
+                checkoutBlock.classList.remove('hidden');
+                tg.MainButton.setText(`Оформить заказ • ${total.toLocaleString()} ₽ (${count} шт.)`);
+                tg.MainButton.show();
+            } else {
+                checkoutBlock.classList.add('hidden');
+                tg.MainButton.hide();
+            }
+        }
+
+        // Переключение вкладок Витрина / Конструктор
+        function switchTab(tab) {
+            const shopView = document.getElementById('shopView');
+            const builderView = document.getElementById('builderView');
+            const tabShopBtn = document.getElementById('tabShopBtn');
+            const tabBuilderBtn = document.getElementById('tabBuilderBtn');
+
+            if (tab === 'shop') {
+                shopView.classList.remove('hidden');
+                builderView.classList.add('hidden');
+                tabShopBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold tg-btn';
+                tabBuilderBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-200 text-gray-800';
+                updateMainButton();
+            } else {
+                shopView.classList.add('hidden');
+                builderView.classList.remove('hidden');
+                tabBuilderBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold tg-btn';
+                tabShopBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-200 text-gray-800';
+                tg.MainButton.hide();
+            }
+        }
+
+        // Функции Конструктора
+        function updateStoreName() {
+            const name = document.getElementById('inputStoreName').value.trim();
+            if (name) {
+                document.getElementById('storeTitle').innerText = name;
+                localStorage.setItem('teleshop_title', name);
+                tg.showAlert('Название магазина успешно обновлено!');
+            }
+        }
+
+        function addNewProduct() {
+            const name = document.getElementById('newProdName').value.trim();
+            const price = parseInt(document.getElementById('newProdPrice').value);
+            const cat = document.getElementById('newProdCat').value;
+            const icon = document.getElementById('newProdImg').value.trim() || '🛍';
+
+            if (!name || !price) {
+                tg.showAlert('Пожалуйста, укажите название и цену товара.');
+                return;
+            }
+
+            const newProd = { id: Date.now(), name, price, category: cat, icon };
+            products.unshift(newProd);
+            localStorage.setItem('teleshop_products', JSON.stringify(products));
+
+            document.getElementById('newProdName').value = '';
+            document.getElementById('newProdPrice').value = '';
+            document.getElementById('newProdImg').value = '';
+
+            renderProducts();
+            switchTab('shop');
+            tg.showAlert(`Товар «${name}» добавлен на витрину!`);
+        }
+
+        function resetDemoData() {
+            localStorage.removeItem('teleshop_products');
+            localStorage.removeItem('teleshop_title');
+            products = [...defaultProducts];
+            cart = {};
+            document.getElementById('storeTitle').innerText = 'SneakerDrop Store';
+            renderProducts();
+            switchTab('shop');
+        }
+
+        // Отправка заказа в Telegram-бота по нажатию главной кнопки
+        tg.MainButton.onClick(() => {
+            const phone = document.getElementById('clientPhone').value.trim() || 'Не указан';
+            const delivery = document.getElementById('deliveryMethod').value;
+            const address = document.getElementById('clientAddress').value.trim() || 'Уточнить у клиента';
+            const storeName = document.getElementById('storeTitle').innerText;
+
+            const items = [];
+            let totalSum = 0;
+
+            for (const [id, qty] of Object.entries(cart)) {
+                const prod = products.find(p => p.id == id);
+                if (prod) {
+                    items.push({ name: prod.name, price: prod.price, qty: qty });
+                    totalSum += prod.price * qty;
+                }
+            }
+
+            const payload = {
+                store: storeName,
+                items: items,
+                total: totalSum,
+                phone: phone,
+                delivery: delivery,
+                address: address
+            };
+
+            // Передаем JSON напрямую в Python-бота
+            tg.sendData(JSON.stringify(payload));
+        });
+
+        renderProducts();
+    </script>
+</body>
+</html>
